@@ -15,6 +15,7 @@ import (
 	captchaapp "todoe/internal/captcha/application"
 	captchadomain "todoe/internal/captcha/domain"
 	"todoe/internal/event"
+	"todoe/internal/messaging"
 )
 
 func main() {
@@ -27,6 +28,24 @@ func main() {
 		port = "3010"
 	}
 
+	amqpURL := os.Getenv("AMQP_URL")
+	if amqpURL == "" {
+		amqpURL = "amqp://guest:guest@localhost:5672/"
+	}
+
+	conn, ch, err := messaging.Connect(amqpURL)
+	if err != nil {
+		log.Fatal("rabbit:", err)
+	}
+	defer conn.Close()
+
+	// declaear topology
+	if err := messaging.DeclareTopology(ch, []messaging.Binding{
+		{Exchange: messaging.CaptchaExchange, Queue: messaging.QueueCaptchaUserEvents},
+	}); err != nil {
+		log.Fatal("rabbit topology:", err)
+	}
+
 	clientIO := mo.NewIOEither(func() (*mongo.Client, error) {
 		return mongo.Connect(options.Client().ApplyURI(mongoURI))
 	})
@@ -37,7 +56,8 @@ func main() {
 	bus.Subscribe(captchadomain.EventIssued, projection)
 	bus.Subscribe(captchadomain.EventVerified, projection)
 
-	service := captchaapp.NewService(repo, bus)
+	catMessaging := messaging.NewPublisher(ch, messaging.CaptchaExchange)
+	service := captchaapp.NewService(repo, bus, catMessaging)
 	handler := captchahttp.NewHandler(service)
 
 	app := fiber.New()

@@ -31,6 +31,7 @@ const (
 	QueueAuditTaskEvents         = "audit.task.events"
 	QueueWelcomeUserEvents       = "welcome.user.events"
 	QueueCreditUserEvents        = "credit.user.events"
+	QueueCaptchaUserEvents       = "captcha.user.events"
 	QueueAuthenUserEvents        = "authen.user.events"
 	QueueOnboardingCreditResults = "onboarding.credit.results"
 )

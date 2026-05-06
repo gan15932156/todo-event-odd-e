@@ -31,7 +31,7 @@ func (m *multiPublisher) Publish(ctx context.Context, e event.Event) {
 func main() {
 	mysqlDSN := os.Getenv("MYSQL_DSN")
 	if mysqlDSN == "" {
-		mysqlDSN = "todoe:todoe@tcp(localhost:3306)/todoe_onboarding?parseTime=true&multiStatements=true"
+		mysqlDSN = "todoe:todoe@tcp(localhost:3333)/todoe_onboarding?parseTime=true&multiStatements=true"
 	}
 	amqpURL := os.Getenv("AMQP_URL")
 	if amqpURL == "" {

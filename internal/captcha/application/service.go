@@ -12,6 +12,7 @@ import (
 	"todoe/internal/captcha/domain"
 	"todoe/internal/captcha/port"
 	"todoe/internal/event"
+	"todoe/internal/messaging"
 )
 
 const challengeTTL = 5 * time.Minute
@@ -19,12 +20,13 @@ const challengeTTL = 5 * time.Minute
 type Service struct {
 	repo      port.Repository
 	publisher port.Publisher
+	messaging *messaging.Publisher
 }
 
 var _ port.UseCase = (*Service)(nil)
 
-func NewService(repo port.Repository, publisher port.Publisher) *Service {
-	return &Service{repo: repo, publisher: publisher}
+func NewService(repo port.Repository, publisher port.Publisher, messaging *messaging.Publisher) *Service {
+	return &Service{repo: repo, publisher: publisher, messaging: messaging}
 }
 
 func (s *Service) Issue(ctx context.Context) mo.Result[domain.Challenge] {
@@ -66,6 +68,7 @@ func (s *Service) Verify(ctx context.Context, id bson.ObjectID, answer int) mo.R
 		return mo.Err[domain.Challenge](ErrChallengeExpired)
 	}
 	if challenge.Verified {
+
 		return mo.Err[domain.Challenge](ErrChallengeAlreadyUsed)
 	}
 	if answer != challenge.Answer {
@@ -80,6 +83,8 @@ func (s *Service) Verify(ctx context.Context, id bson.ObjectID, answer int) mo.R
 	if r := s.repo.Append(ctx, id, domain.EventVerified, domain.VerifiedPayload{ID: id}); r.IsError() {
 		return mo.Err[domain.Challenge](r.Error())
 	}
+
 	s.publisher.Publish(ctx, event.Event{Type: domain.EventVerified, Payload: verified})
+	s.messaging.Publish(ctx, event.Event{Type: domain.EventVerified, Payload: verified})
 	return mo.Ok(verified)
 }
