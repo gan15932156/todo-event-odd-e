@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"todoe/domain/task/domain"
+	"todoe/internal/event"
 )
 
 type UseCase interface {
@@ -20,4 +21,8 @@ type Repository interface {
 	Save(ctx context.Context, task domain.Task) mo.Result[struct{}]
 	FindAll(ctx context.Context) mo.Result[[]domain.Task]
 	FindByID(ctx context.Context, id bson.ObjectID) mo.Result[domain.Task]
+}
+
+type Publisher interface {
+	Publish(ctx context.Context, e event.Event)
 }

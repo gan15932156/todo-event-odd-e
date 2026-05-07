@@ -10,13 +10,17 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
+	audittAdapter "todoe/internal/audit/adapter"
+	"todoe/internal/event"
 	healthadapter "todoe/internal/health/adapter"
 	healthhttp "todoe/internal/health/adapter/http"
 	healthapp "todoe/internal/health/application"
+	slaAdapter "todoe/internal/sla/adapter"
 
 	taskadapter "todoe/domain/task/adapter"
 	taskhttp "todoe/domain/task/adapter/http"
 	taskapplication "todoe/domain/task/application"
+	taskdomain "todoe/domain/task/domain"
 )
 
 func main() {
@@ -29,6 +33,8 @@ func main() {
 		return mongo.Connect(options.Client().ApplyURI(mongoURI))
 	})
 
+	bus := event.NewEventBus()
+
 	healthRepo := healthadapter.NewMongoRepository(clientIO)
 	defer healthRepo.Disconnect(context.Background())
 
@@ -36,10 +42,21 @@ func main() {
 	healthHandler := healthhttp.NewHandler(healthService)
 
 	taskRepo := taskadapter.NewMongoRepository(clientIO)
-	taskService := taskapplication.NewService(taskRepo)
+	taskService := taskapplication.NewService(taskRepo, bus)
 	taskHandler := taskhttp.NewHandler(taskService)
 
+	auditRepo := audittAdapter.NewMongoRepository(clientIO)
+	auditHandler := audittAdapter.NewAuditHandler(auditRepo)
+	bus.Subscribe(taskdomain.EventCreated, auditHandler)
+	bus.Subscribe(taskdomain.EventStatusChanged, auditHandler)
+
+	slaRepo := slaAdapter.NewCSVRepository()
+	slaHandler := slaAdapter.NewHandler(slaRepo)
+	bus.Subscribe(taskdomain.EventCreated, slaHandler)
+	bus.Subscribe(taskdomain.EventStatusChanged, slaHandler)
+
 	app := fiber.New()
+
 	app.Get("/health", healthHandler.CheckHealth)
 	app.Post("/tasks", taskHandler.Create)
 	app.Get("/tasks", taskHandler.List)
