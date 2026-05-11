@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	ErrInvalidCredentials   = errors.New("invalid email or password")
-	ErrEmailAlreadyExists   = errors.New("email already registered")
-	ErrSessionNotFound      = errors.New("session not found")
-	ErrSessionExpired       = errors.New("session has expired")
+	ErrInvalidCredentials = errors.New("invalid email or password")
+	ErrEmailAlreadyExists = errors.New("email already registered")
+	ErrSessionNotFound    = errors.New("session not found")
+	ErrSessionExpired     = errors.New("session has expired")
 )
 
 const sessionTTL = 24 * time.Hour
@@ -33,6 +33,24 @@ var _ port.UseCase = (*Service)(nil)
 
 func NewService(repo port.Repository, publisher port.Publisher) *Service {
 	return &Service{repo: repo, publisher: publisher}
+}
+
+// UpdateCredential implements [port.UseCase].
+func (s *Service) UpdateCredential(ctx context.Context, email string, userId string) mo.Result[domain.Credential] {
+	// slog.Info(email + " " + userId)
+	cred := s.repo.FindCredentialByUserIdl(ctx, userId)
+	if cred.IsError() {
+		return mo.Err[domain.Credential](ErrInvalidCredentials)
+	}
+	updatedCred := domain.Credential{
+		ID:           bson.NewObjectID(),
+		UserID:       userId,
+		Email:        email,
+		PasswordHash: cred.MustGet().PasswordHash,
+		CreatedAt:    time.Now(),
+	}
+	_ = s.repo.UpdateCredentialEmail(ctx, userId, email)
+	return mo.Ok(updatedCred)
 }
 
 func (s *Service) RegisterCredential(ctx context.Context, email, password string) mo.Result[domain.Credential] {

@@ -93,6 +93,17 @@ func (r *MongoRepository) FindCredentialByEmail(ctx context.Context, email strin
 	}
 	return mo.Ok(cred)
 }
+func (r *MongoRepository) FindCredentialByUserIdl(ctx context.Context, userId string) mo.Result[domain.Credential] {
+	db, err := r.db()
+	if err != nil {
+		return mo.Err[domain.Credential](err)
+	}
+	var cred domain.Credential
+	if err := db.Collection("auth_credentials").FindOne(ctx, bson.D{{Key: "user_id", Value: userId}}).Decode(&cred); err != nil {
+		return mo.Err[domain.Credential](err)
+	}
+	return mo.Ok(cred)
+}
 
 func (r *MongoRepository) UpsertSession(ctx context.Context, session domain.Session) mo.Result[struct{}] {
 	db, err := r.db()
@@ -133,5 +144,45 @@ func (r *MongoRepository) DeactivateSession(ctx context.Context, token string) m
 	if _, err := db.Collection("auth_sessions").UpdateOne(ctx, filter, update); err != nil {
 		return mo.Err[struct{}](err)
 	}
+	return mo.Ok(struct{}{})
+}
+
+func (r *MongoRepository) UpdateCredentialEmail(
+	ctx context.Context,
+	userId string,
+	newEmail string,
+) mo.Result[struct{}] {
+	db, err := r.db()
+	if err != nil {
+		return mo.Err[struct{}](err)
+	}
+
+	filter := bson.D{
+		{Key: "user_id", Value: userId},
+	}
+
+	update := bson.D{
+		{
+			Key: "$set",
+			Value: bson.D{
+				{Key: "email", Value: newEmail},
+			},
+		},
+	}
+
+	result, err := db.Collection("auth_credentials").UpdateOne(
+		ctx,
+		filter,
+		update,
+	)
+
+	if err != nil {
+		return mo.Err[struct{}](err)
+	}
+
+	if result.MatchedCount == 0 {
+		return mo.Err[struct{}](mongo.ErrNoDocuments)
+	}
+
 	return mo.Ok(struct{}{})
 }

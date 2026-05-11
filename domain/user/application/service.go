@@ -123,8 +123,15 @@ func (s *Service) UpdateContact(ctx context.Context, id, name, email, bio string
 		return mo.Err[domain.User](r.Error())
 	}
 	s.publisher.Publish(ctx, event.Event{Type: domain.EventContactUpdated, Payload: next})
+	s.amqPublisher.Publish(ctx, event.Event{Type: domain.EventContactUpdated, Payload: next})
+	// s.publisher.Publ/ish(ctx, event.Event{Type: domain.EventProfileUpdated, Payload: next})
 	return mo.Ok(next)
 }
+
+// Domain event => internal bus
+// Event spursing => Collap accorss boundary system
+//	// event carry state tranfer
+//	// event notify change
 
 func (s *Service) CompleteProfile(ctx context.Context, id, bio string) mo.Result[domain.User] {
 	current := s.repo.FindByID(ctx, id)

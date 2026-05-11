@@ -46,7 +46,7 @@ func fakeCreditScore(email string) (int, bool) {
 func main() {
 	mysqlDSN := os.Getenv("MYSQL_DSN")
 	if mysqlDSN == "" {
-		mysqlDSN = "todoe:todoe@tcp(localhost:3306)/todoe_onboarding?parseTime=true&multiStatements=true"
+		mysqlDSN = "todoe:todoe@tcp(localhost:3333)/todoe_onboarding?parseTime=true&multiStatements=true"
 	}
 	mongoURI := os.Getenv("MONGO_URI")
 	if mongoURI == "" {
@@ -92,6 +92,7 @@ func main() {
 	userBus.Subscribe(userdomain.EventCreditScored, userProjection)
 	userBus.Subscribe(userdomain.EventProfileCompleted, userProjection)
 	userBus.Subscribe(userdomain.EventContactUpdated, userProjection)
+	userBus.Subscribe(userdomain.EventProfileUpdated, userProjection)
 
 	userPublisher := &multiPublisher{publishers: []event.Publisher{
 		userBus,

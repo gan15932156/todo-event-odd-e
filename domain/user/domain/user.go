@@ -20,6 +20,7 @@ const (
 	EventEmailVerified    = "user.email_verified"
 	EventCreditScored     = "user.credit_scored"
 	EventProfileCompleted = "user.profile_completed"
+	EventProfileUpdated   = "user.profile_updated"
 	EventUserActivated    = "user.activated"
 	EventContactUpdated   = "user.contact_updated"
 )

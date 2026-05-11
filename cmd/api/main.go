@@ -93,6 +93,23 @@ func main() {
 	authenService := authenapp.NewService(authenRepo, authenBus)
 	authenHandler := authenhttp.NewHandler(authenService)
 
+	if err := messaging.Subscribe(ch, messaging.UserExchange, messaging.QueueAuthenUserEvents, func(msg messaging.Message) {
+		if msg.Type != userdomain.EventContactUpdated {
+			return
+		}
+		var p userdomain.User
+		if err := json.Unmarshal(msg.Payload, &p); err != nil {
+			slog.Error("api: user.activated unmarshal", "err", err)
+			return
+		}
+
+		if r := authenService.UpdateCredential(context.Background(), p.Email, p.ID); r.IsError() {
+			slog.Error("api: user.update credential failed", "err", r.Error())
+		}
+	}); err != nil {
+		log.Fatal("rabbit subscribe authen.user.events:", err)
+	}
+
 	// user.activated arrives from cmd/onboarding via RabbitMQ → create auth credential
 	if err := messaging.Subscribe(ch, messaging.UserExchange, messaging.QueueAuthenUserEvents, func(msg messaging.Message) {
 		if msg.Type != userdomain.EventUserActivated {
